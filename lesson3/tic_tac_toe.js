@@ -22,14 +22,18 @@ Goodbye!
 
 
 */
+
+const FIRST_PLAYER_OPTIONS = ["Player", 'Computer', 'Choose'];
+const FIRST_PLAYER = FIRST_PLAYER_OPTIONS[2];  /*  change index to change first player settings   */
+const SQUARES_PER_ROW = 3;
+const rls = require('readline-sync');
 const GAMES_TO_WIN = 3;
 const INITIAL_MARKER = ' ';
-const HUMAN_MARKER = 'X';
+const PLAYER_MARKER = 'X';
 const COMPUTER_MARKER  = 'O';
 const POSITIONS = ['Top Left', 'Top Center', 'Top Right',
                    'Middle Left', 'Middle Center', 'Middle Right',
-                   'Bottom Left', 'Bottom Center', 'Bottom Right']
-
+                   'Bottom Left', 'Bottom Center', 'Bottom Right'];
 const WINNING_INDICES = [
   [0, 1, 2], //top row
   [3, 4, 5], //middle row
@@ -41,9 +45,7 @@ const WINNING_INDICES = [
   [2, 5, 8]  //right column
 ];
 
-const SQUARES_PER_ROW = 3;
 
-const rls = require('readline-sync');
 
 function prompt (str) {
   return `=> ${str}`;
@@ -51,7 +53,7 @@ function prompt (str) {
 
 function greetUser () {
   console.clear();
-  console.log(prompt('Welcome to Tic Tac Toe! First to three in a row wins!\n'));
+  console.log(prompt('Welcome to Tic Tac Toe! First player to win 3 games WINS!!!\n'));
   rls.question(prompt('Press enter to start!'));
 }
 
@@ -74,15 +76,15 @@ function updateMatchScore (match, gameResult) {
 }
 
 function matchOver (match) {
-  if(match.userWinCount === 3) return prompt("You won the match!");
-  else if(match.computerWinCount === 3) return prompt("The Computer won the match!");
+  if(match.userWinCount === GAMES_TO_WIN) return prompt("You won the match!");
+  else if(match.computerWinCount === GAMES_TO_WIN) return prompt("The Computer won the match!");
 }
 
 function gameOver (board) {
 
   if(WINNING_INDICES.some(subArr => subArr.every(square => board[square] === COMPUTER_MARKER))) {
     return "The Computer won the game.";
-  } else if (WINNING_INDICES.some(subArr => subArr.every(square => board[square] === HUMAN_MARKER))) {
+  } else if (WINNING_INDICES.some(subArr => subArr.every(square => board[square] === PLAYER_MARKER))) {
     return "You won the game!";
   } else if (WINNING_INDICES.every(subArr => subArr.every(square => board[square] !== INITIAL_MARKER))) {
     return "It's a tie.";
@@ -94,7 +96,7 @@ function gameOver (board) {
 
   // if(currentBoardStatus.some(subArr => subArr.every(square => square === COMPUTER_MARKER))) {
   //   return "The Computer won the game.";
-  // } else if (currentBoardStatus.some(subArr => subArr.every(square => square === HUMAN_MARKER))) {
+  // } else if (currentBoardStatus.some(subArr => subArr.every(square => square === PLAYER_MARKER))) {
   //   return "You won the game!";
   // } else if (currentBoardStatus.every(subArr => subArr.every(square => square !== INITIAL_MARKER))) {
   //   return "It's a tie.";
@@ -104,7 +106,7 @@ function gameOver (board) {
 
 function displayStatus (board, match) {
   console.clear();
-  console.log(`You are ${HUMAN_MARKER}. Computer is ${COMPUTER_MARKER}.`);
+  console.log(`You are ${PLAYER_MARKER}. Computer is ${COMPUTER_MARKER}.`);
   console.log(` - Current Score - Human: ${match['userWinCount']} Computer: ${match['computerWinCount']}`);
   console.log('');
   console.log(`     |     |`);
@@ -131,7 +133,7 @@ function playerChoosesSquare (board, match) {
     chosenSquare = rls.keyInSelect(board.positionsRemaining, prompt('Pick an open Square.'));
   }
   //update board marker and positions remaining
-  board[chosenSquare] = HUMAN_MARKER;
+  board[chosenSquare] = PLAYER_MARKER;
   board.positionsRemaining[chosenSquare] = 'TAKEN';
 
   //display new board state
@@ -144,8 +146,8 @@ function getAvailableSquares  (board) {
 }
 
 function computerChoosesSquare (board, match) {
-  // let computerChoice = getComputerRandomChoice(board);
-  let computerChoice = getComputerDefenseAiChoice(board);
+  // let computerChoice = getRandomSquare(board);
+  let computerChoice = getComputerAiSquare(board);
 
   //update board markers and positions remaining
   board[computerChoice] = COMPUTER_MARKER;
@@ -192,44 +194,137 @@ function computerChoosesSquare (board, match) {
  *        
  */
 
-function getComputerRandomChoice (board) {
-  let availableSquares = getAvailableSquares(board);
-  //generate random number between 0 availableSquares.length - 1  (since we are rounding down with Math.floor)
-  let randomAvailableIndex = Math.floor(Math.random() * (availableSquares.length));
-
-  return availableSquares[randomAvailableIndex];
+function getComputerAiSquare (board) {
+  //return immidiate threat index, or random choice if getDefenseSquare returns undefined
+  //return getOffenseSquare(board) !== undefined ? getOffenseSquare(board) : getRandomSquare(board);
+  return getOffenseSquare(board) ?? getDefenseSquare(board) ?? get5status(board) ?? getRandomSquare(board);
 }
 
-function getComputerDefenseAiChoice (board) {
+function getOffenseSquare (board) {
+  //iterate through the winning indexes array sub arrays
+  for(let i = 0; i < WINNING_INDICES.length; i++) {
+    //declare xCount and oCount variables
+    let xCount = 0;
+    let oCount = 0;
 
-  function getImmidiateThreatSquare (board) {
-    //iterate through the winning indexes array sub arrays
-    for(let i = 0; i < WINNING_INDICES.length; i++) {
-      //declare xCount and oCount variables
-      let xCount = 0;
-      let oCount = 0;
+    //iterate through sub array's and incriment xCount and oCount as appropriate
+    for(let j = 0; j < SQUARES_PER_ROW; j++) {
+      if(board[WINNING_INDICES[i][j]] === PLAYER_MARKER) xCount += 1;
+      else if(board[WINNING_INDICES[i][j]] === COMPUTER_MARKER) oCount += 1;
+    }
 
-      //iterate through sub array's and incriment xCount and oCount as appropriate
-      for(let j = 0; j < SQUARES_PER_ROW; j++) {
-        if(board[WINNING_INDICES[i][j]] === HUMAN_MARKER) xCount += 1;
-        else if(board[WINNING_INDICES[i][j]] === COMPUTER_MARKER) oCount += 1;
-      }
-
-      //check if user has 2 squares in the subarray, and computer has 0.
-      if((xCount === SQUARES_PER_ROW - 1) && (oCount === 0)) {
-        //iterate through the sub array again and return the WINNING_INDEX value as the imminent threat
-        for(let j = 0; j <= WINNING_INDICES.length; j++) {
-          if(board[WINNING_INDICES[i][j]] === INITIAL_MARKER) {
-            //console.log(`AI Engaged! Row ${WINNING_INDICES[i]}** Index: ${WINNING_INDICES[i][j]}*******************************************`);
-            return WINNING_INDICES[i][j];
-          }
+    //check if user has 2 squares in the subarray, and computer has 0.
+    if((oCount === SQUARES_PER_ROW - 1) && (xCount === 0)) {
+      //iterate through the sub array again and return the WINNING_INDEX value as the imminent threat
+      for(let j = 0; j <= WINNING_INDICES.length; j++) {
+        if(board[WINNING_INDICES[i][j]] === INITIAL_MARKER) {
+          console.log(`AI Offense Engaged! Row ${WINNING_INDICES[i]}** Index: ${WINNING_INDICES[i][j]}*******************************************`);
+          return WINNING_INDICES[i][j];
         }
       }
     }
   }
+}
 
-  //return immidiate threat index, or random choice if getImmidiateThreatSquare returns undefined
-  return getImmidiateThreatSquare(board) !== undefined ? getImmidiateThreatSquare(board) : getComputerRandomChoice(board);
+function getDefenseSquare (board) {
+  //iterate through the winning indexes array sub arrays
+  for(let i = 0; i < WINNING_INDICES.length; i++) {
+    //declare xCount and oCount variables
+    let xCount = 0;
+    let oCount = 0;
+
+    //iterate through sub array's and incriment xCount and oCount as appropriate
+    for(let j = 0; j < SQUARES_PER_ROW; j++) {
+      if(board[WINNING_INDICES[i][j]] === PLAYER_MARKER) xCount += 1;
+      else if(board[WINNING_INDICES[i][j]] === COMPUTER_MARKER) oCount += 1;
+    }
+
+    //check if user has 2 squares in the subarray, and computer has 0.
+    if((xCount === SQUARES_PER_ROW - 1) && (oCount === 0)) {
+      //iterate through the sub array again and return the WINNING_INDEX value as the imminent threat
+      for(let j = 0; j <= WINNING_INDICES.length; j++) {
+        if(board[WINNING_INDICES[i][j]] === INITIAL_MARKER) {
+          console.log(`AI Defense Engaged! Row ${WINNING_INDICES[i]}** Index: ${WINNING_INDICES[i][j]}*******************************************`);
+          return WINNING_INDICES[i][j];
+        }
+      }
+    }
+  }
+}
+
+function getRandomSquare (board) {
+  let availableSquares = getAvailableSquares(board);
+  //generate random number between 0 availableSquares.length - 1  (since we are rounding down with Math.floor)
+  let randomAvailableIndex = Math.floor(Math.random() * (availableSquares.length));
+  console.log("WILDCARD BABY!!!!!!!!!!!!!!!!!!!!!!!!!");
+  return availableSquares[randomAvailableIndex];
+}
+
+function get5status (board) {
+  if(getAvailableSquares(board).includes(4)) {
+    console.log('PICK 5 ***********************************************');
+    return 4;
+  }
+}
+
+/**
+ * RunTurnLoop
+ * 
+ * Description - Encapsulate turn loop functionality and add control flow so that the turn order
+ *               set in the FIRST_PLAYER is followed
+ * 
+ * Input - Board, Match, and FIRST_PLAYER
+ * 
+ * Output  -  Mutate the board object and break when the game is over
+ * 
+ * DS - NA
+ * 
+ * Algorithm - 
+ * 
+ * Declare a local variable for storing the value of the FIRST_PLAYER variable. 
+ * 
+ * If FIRST_PLAYER is set to "Choose", prompt the user and ask them to pick between Player first, or computer first
+ * and reassign the local first player variable appropriately.
+ * 
+ * If FIRST_PLAYER is computer, use a while loop to play out the computer and then player turns until
+ * the game is over
+ * 
+ * Else use a while loop to play out the player and then computer turns until the
+ * game is over.
+ * 
+ */
+
+function runTurnLoop (board, match) {
+  let first = FIRST_PLAYER;
+
+  // If FIRST_PLAYER is set to "Choose", prompt the user and ask them to pick between Player first, or computer first
+  // and reassign the local first player variable appropriately.
+  if(first === FIRST_PLAYER_OPTIONS[2]) {
+    first = FIRST_PLAYER_OPTIONS[rls.keyInSelect(FIRST_PLAYER_OPTIONS.slice(0, 2), "Pick who goes first.")];
+  }
+  //If first player is player, player turn first loop
+  if(first === FIRST_PLAYER_OPTIONS[0]) {
+    while(true) {
+      displayStatus(board, match);
+
+      playerChoosesSquare(board, match);
+      if(gameOver(board))break;
+      
+      computerChoosesSquare(board, match);
+      if(gameOver(board)) break;
+    }
+  //Computer first turn loop
+  } else {
+    while(true) {
+      displayStatus(board, match);
+
+      computerChoosesSquare(board, match);
+      if(gameOver(board)) break;
+
+      playerChoosesSquare(board, match);
+      if(gameOver(board))break;
+    }
+  }
 }
 
 /**********************Testing************************/
@@ -263,15 +358,8 @@ while(true) {
     let board = initializeBoard();
 
     //turn loop
-    while(true) {
-      displayStatus(board, match);
+    runTurnLoop(board, match);
 
-      playerChoosesSquare(board, match);
-      if(gameOver(board))break;
-      
-      computerChoosesSquare(board, match);
-      if(gameOver(board)) break;
-    }
     //display the game result
     console.log(gameOver(board));
 
@@ -293,9 +381,3 @@ while(true) {
     break;
   }
 }
-
-
-//Show the final score /  display the new score along with the current game's result.
-
-
-//typeerror. Figure out 
