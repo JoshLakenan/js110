@@ -267,6 +267,9 @@ function get5status (board) {
   }
 }
 
+
+
+function runTurnLoop (board, match) {
 /**
  * RunTurnLoop
  * 
@@ -293,8 +296,6 @@ function get5status (board) {
  * game is over.
  * 
  */
-
-function runTurnLoop (board, match) {
   let first = FIRST_PLAYER;
 
   // If FIRST_PLAYER is set to "Choose", prompt the user and ask them to pick between Player first, or computer first
